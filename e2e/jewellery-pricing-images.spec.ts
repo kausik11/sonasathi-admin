@@ -116,3 +116,18 @@ test("Jeweller can set separate prices for each purity from the dropdown", async
   await expect(page.getByRole("row").filter({ hasText: "18K" }).getByText("Your custom rate")).toBeVisible();
   await expect(page.getByRole("row").filter({ hasText: "22K" }).getByText("Your custom rate")).toBeVisible();
 });
+
+test("opening admin gold rates replaces the demo value with the IBJA response", async ({ page }) => {
+  await page.goto("/");
+  await page.getByRole("button", { name: /Super Admin/ }).click();
+  await expect(page).toHaveURL(/admin\/dashboard$/);
+  await page.route("**/api/gold-rates/ibja", (route) => route.fulfill({
+    status: 200,
+    contentType: "application/json",
+    body: JSON.stringify({ success: true, rate24k: 13497.0209, source: "Metals.Dev / IBJA", sourceTimestamp: "2026-11-16T19:20:03.876Z", currency: "INR", unit: "g", message: "Live IBJA reference rate." }),
+  }));
+  await page.goto("/admin/dashboard/gold-rates");
+  await expect(page.getByRole("status").filter({ hasText: "Updated IBJA reference rate" })).toBeVisible();
+  await expect(page.getByText("₹13,497.02", { exact: true })).toBeVisible();
+  await expect(page.getByText("Demo reference (24K sample, not live)")).toHaveCount(0);
+});

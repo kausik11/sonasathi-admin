@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useState } from "react";
 import { CircleDollarSign, RefreshCw, Save } from "lucide-react";
 import { getDemoSession } from "../../services/demoSession";
 import { getGoldRates, recordGoldFetch, saveGoldFetchTimes, saveGoldRateOverride, saveReferenceGoldRate } from "../../services/dashboardDataService";
@@ -10,6 +10,7 @@ import { SUPPORTED_GOLD_PURITIES } from "../../utils/productPricing";
 import { getAppliedGoldRate } from "../../utils/productPricing";
 
 const rupees = (value: number) => new Intl.NumberFormat("en-IN", { style: "currency", currency: "INR", maximumFractionDigits: 2 }).format(value);
+const AUTO_FETCH_KEY = "sonasathi:ibja-initial-fetch-attempted:v1";
 
 export default function GoldRatesPage({ role }: { role: "admin" | "jeweller" }) {
   const { data, error, reload } = useDashboardData();
@@ -31,7 +32,7 @@ export default function GoldRatesPage({ role }: { role: "admin" | "jeweller" }) 
   ];
   useEffect(() => { const timer = window.setTimeout(() => { setNowMs(new Date().getTime()); try { setTimes(getGoldRates().fetchTimes); } catch { /* the page already shows the dashboard storage error */ } }, 0); return () => window.clearTimeout(timer); }, []);
 
-  async function fetchRate() {
+  const fetchRate = useCallback(async () => {
     setBusy(true); setMessage("");
     try {
       const response = await fetch("/api/gold-rates/ibja", { cache: "no-store" });
@@ -44,7 +45,17 @@ export default function GoldRatesPage({ role }: { role: "admin" | "jeweller" }) 
       try { recordGoldFetch({ rate24k: null, source: "Metals.Dev / IBJA", success: false, message: detail }); } catch { /* keep the fetch message visible */ }
       setMessage(detail); reload();
     } finally { setBusy(false); }
-  }
+  }, [reload]);
+
+  useEffect(() => {
+    if (role !== "admin" || !gold?.source?.startsWith("Demo reference")) return;
+    try { if (window.sessionStorage.getItem(AUTO_FETCH_KEY) === "yes") return; } catch { return; }
+    const timer = window.setTimeout(() => {
+      try { window.sessionStorage.setItem(AUTO_FETCH_KEY, "yes"); } catch { /* API key remains server-side; allow manual fetch if storage is unavailable. */ }
+      void fetchRate();
+    }, 0);
+    return () => window.clearTimeout(timer);
+  }, [role, gold?.source, fetchRate]);
   function saveOverride(values: FormValues) {
     const owner = sessionId ?? String(values.jewellerId);
     const purity = String(values.purity ?? "24K");
