@@ -10,6 +10,12 @@ export function useDashboardData() {
     try { setData(getDashboardData()); setError(""); }
     catch (reason) { setError(reason instanceof Error ? reason.message : "Saved data could not be loaded."); }
   }, []);
-  useEffect(() => { const timer = window.setTimeout(reload, 0); return () => window.clearTimeout(timer); }, [reload]);
+  useEffect(() => {
+    const timer = window.setTimeout(reload, 0);
+    const onChange = () => reload();
+    window.addEventListener("storage", onChange);
+    window.addEventListener("sonasathi:data-changed", onChange);
+    return () => { window.clearTimeout(timer); window.removeEventListener("storage", onChange); window.removeEventListener("sonasathi:data-changed", onChange); };
+  }, [reload]);
   return { data, error, reload };
 }

@@ -27,7 +27,14 @@ function browserStorage() {
 
 function getMetadata(): JewelleryImage[] {
   try {
-    return JSON.parse(browserStorage().getItem(METADATA_KEY) ?? "[]") as JewelleryImage[];
+    const storage = browserStorage();
+    const existing = storage.getItem(METADATA_KEY);
+    if (existing) return JSON.parse(existing) as JewelleryImage[];
+    const modular = storage.getItem("sonasathi:v1:product-images");
+    if (!modular) return [];
+    const images = JSON.parse(modular) as JewelleryImage[];
+    storage.setItem(METADATA_KEY, JSON.stringify(images));
+    return images;
   } catch {
     throw new Error("Saved image details could not be read. Browser storage may be unavailable.");
   }
@@ -36,6 +43,7 @@ function getMetadata(): JewelleryImage[] {
 function saveMetadata(images: JewelleryImage[]) {
   try {
     browserStorage().setItem(METADATA_KEY, JSON.stringify(images));
+    try { browserStorage().setItem("sonasathi:v1:product-images", JSON.stringify(images)); } catch { /* The existing metadata key remains canonical. */ }
   } catch (error) {
     if (isQuotaError(error)) {
       throw new Error("Browser storage is full. Existing images were kept; remove some images or switch to IndexedDB.");

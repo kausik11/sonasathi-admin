@@ -4,6 +4,7 @@ import { useState } from "react";
 import { CalendarDays, CheckCircle2 } from "lucide-react";
 import { useDashboardData } from "../../src/hooks/useDashboardData";
 import { saveStoreVisit, type StoreVisit } from "../../src/services/dashboardDataService";
+import { validateVisitAvailability } from "../../src/utils/visitAvailability";
 import { ActionButton, type FormField, Modal, type FormValues } from "../../src/components/dashboard/SharedUI";
 
 const id = () => `visit-${crypto.randomUUID()}`;
@@ -27,6 +28,8 @@ export default function VisitRequestPage() {
     const owner = String(values.jewellerId);
     const product = data?.products.find((item) => item.id === String(values.productId) && item.jewellerId === owner && item.status === "published");
     if (!product) throw new Error("Choose an available product from the selected shop.");
+    const availabilityError = validateVisitAvailability(data?.visitingHours.find((item) => item.jewellerId === owner), String(values.date), String(values.time));
+    if (availabilityError) throw new Error(availabilityError);
     const visit: StoreVisit = { id: id(), customerName: String(values.customerName).trim(), mobile: String(values.mobile).trim(), email: String(values.email ?? "").trim(), productId: product.id, jewellerId: owner, date: String(values.date), time: String(values.time), message: String(values.message ?? "").trim(), status: "New", createdAt: new Date().toISOString() };
     saveStoreVisit(visit); reload(); setAdding(false); setSubmitted(true);
   }

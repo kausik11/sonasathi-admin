@@ -49,8 +49,16 @@ Jewellery images are resized and converted to WebP in the browser, then stored a
 
 The public visit form writes to localStorage on the Next.js app origin. A separate storefront origin cannot read or share those records without a backend or a same-origin proxy.
 
-## IBJA reference fetch
+## Jewellery pricing and local images
 
-Manual and scheduled fetches use the server route `/api/gold-rate`. To enable live Metals.Dev rates, place `METALSDEV_API_KEY` in the local server environment (for example, in `.env.local`) and restart Next.js. The key is not exposed to the browser. Without it, fetch attempts are recorded as failed API log entries; manual reference rates and jeweller overrides remain available. The scheduler checks the configured two times while the admin dashboard is open in the browser.
+Product pricing can be entered manually or derived from the displayed breakdown (configured purity rate × net gold weight, making charge, making discount, stone charges, separate subtotal discount, GST estimate). A fixed selling discount is applied once to the actual price. Purity rates without an explicit jeweller override are proportional estimates based on the configured 24K reference; they are labelled as estimates, not IBJA quotes. GST is displayed for estimation only and should be confirmed for each transaction.
 
-Gold-rate requests use the Metals.Dev authority endpoint for IBJA, returning INR per gram when supported by the configured account.
+Jeweller overrides are scoped by shop and purity and expire after 24 hours. Their expiry is preserved in the audit history. Fetch schedule times use Asia/Kolkata; overdue slots are caught up when an admin opens the dashboard, with local slot de-duplication.
+
+Manual and scheduled fetches use the server route `/api/gold-rates/ibja`. To enable Metals.Dev rates, place `METALS_DEV_API_KEY` in the server environment (for example, `.env.local`) and restart Next.js. The key stays on the server. The route requests the IBJA authority in INR per gram and returns the provider timestamp where available. A demo/reference rate is not a live quotation.
+
+Jewellery images are converted to WebP in the browser and stored in localStorage for this demo. Images, listings and queries remain on this browser profile and app origin. They are not automatically accessible from another device or the separate hosted React storefront. Storage quota errors are shown without deleting existing images.
+
+## Browser checks
+
+Run `npm run test:e2e` to launch the configured Playwright browser tests for two jeweller image isolation/persistence, invalid image rejection and the public price breakdown. The Playwright config currently uses the standard Google Chrome install path on Windows.

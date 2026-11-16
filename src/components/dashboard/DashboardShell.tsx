@@ -74,7 +74,7 @@ export default function DashboardShell({ role, children }: { role: DemoRole; chi
 
   return (
     <div className="min-h-screen bg-[#f6f4ee] text-[#26312b]">
-      {role === "admin" && <GoldRateScheduler />}
+      <GoldRateScheduler role={role} />
       {mobileOpen && <button aria-label="Close navigation" onClick={() => setMobileOpen(false)} className="fixed inset-0 z-40 bg-black/40 lg:hidden" />}
       <aside className={`fixed inset-y-0 left-0 z-50 flex flex-col border-r border-[#294239] bg-[#142a22] text-white transition-all duration-200 ${sidebarWidth} ${mobileOpen ? "translate-x-0" : "-translate-x-full lg:translate-x-0"} ${collapsed ? "w-[264px] lg:w-[84px]" : "w-[264px]"}`}>
         <div className={`flex h-[76px] items-center border-b border-white/10 ${collapsed ? "justify-center px-3" : "justify-between px-5"}`}>

@@ -5,9 +5,10 @@ import { CalendarPlus, Plus } from "lucide-react";
 import { getDemoSession } from "../../services/demoSession";
 import { saveStoreVisit, updateVisitStatus, type StoreVisit, type VisitStatus } from "../../services/dashboardDataService";
 import { useDashboardData } from "../../hooks/useDashboardData";
+import { validateVisitAvailability } from "../../utils/visitAvailability";
 import { ActionButton, EmptyState, Modal, Panel, SearchInput, Table, type FormField, type FormValues } from "./SharedUI";
 
-const visitStatuses: VisitStatus[] = ["New", "Contacted", "Visit Scheduled", "Visited", "Completed", "Cancelled"];
+const visitStatuses: VisitStatus[] = ["New", "Contacted", "Confirmed", "Visited", "Completed", "Cancelled"];
 const id = () => `visit-${crypto.randomUUID()}`;
 
 export default function StoreVisitsPage({ role }: { role: "admin" | "jeweller" }) {
@@ -34,6 +35,8 @@ export default function StoreVisitsPage({ role }: { role: "admin" | "jeweller" }
     const owner = jewellerId ?? String(values.jewellerId);
     const product = data.products.find((item) => item.id === String(values.productId) && item.jewellerId === owner);
     if (!product) throw new Error("Choose a product belonging to the selected shop.");
+    const availabilityError = validateVisitAvailability(data.visitingHours.find((item) => item.jewellerId === owner), String(values.date), String(values.time));
+    if (availabilityError) throw new Error(availabilityError);
     const visit: StoreVisit = { id: id(), customerName: String(values.customerName).trim(), mobile: String(values.mobile).trim(), email: String(values.email ?? "").trim(), productId: product.id, jewellerId: owner, date: String(values.date), time: String(values.time), message: String(values.message ?? "").trim(), status: String(values.status || "New") as VisitStatus, createdAt: new Date().toISOString() };
     saveStoreVisit(visit); setAdding(false); reload(); setToast("Store visit query saved.");
   }
