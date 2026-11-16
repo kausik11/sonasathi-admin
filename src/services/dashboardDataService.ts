@@ -1,4 +1,5 @@
 import { deleteProductJewelleryImages, getJewelleryImageUrl, listAllJewelleryImages, listJewelleryImages, saveJewelleryImage } from "./imageStorageService";
+import { SONASATHI_CATEGORIES } from "../utils/productCategoryFields";
 export { listJewelleryImages as getProductImages, saveJewelleryImage as saveProductImage, deleteJewelleryImage as deleteProductImage, updateJewelleryImages as updateProductImages } from "./imageStorageService";
 export { listJewelleryImages, getJewelleryImageUrl } from "./imageStorageService";
 
@@ -17,6 +18,7 @@ export type Jeweller = {
 export type Product = {
   id: string; jewellerId: string; name: string; category: string; purity: string; weight: number;
   actualPrice: number; offerAmount: number; status: ListingStatus; description: string; createdAt: string;
+  productAttributes?: Record<string, string | number | boolean>;
   huid?: string; huid2?: string; netGoldWeight?: number; grossWeight?: number; stoneName?: string; stoneDetails?: string;
   stoneCharges?: number; fixedDiscount?: number; makingChargePercentage?: number; makingChargeDiscountPercentage?: number;
   breakdownDiscount?: number; gstPercentage?: number; pricingMode?: "manual" | "breakdown"; goldRateSource?: string; goldRateTimestamp?: string;
@@ -74,7 +76,7 @@ function seedData(): DemoData {
     date: new Date(Date.now() + (i + 1) * 86400000).toISOString().slice(0, 10), time: "11:30", message: "I would like to see this piece in person.",
     status: (["New", "Contacted", "Confirmed", "New", "Visited", "New", "Completed"] as VisitStatus[])[i], createdAt: new Date(Date.now() - i * 3600000).toISOString(),
   }));
-  const categories: Category[] = ["Necklaces", "Earrings", "Rings", "Bangles", "Pendants", "Bridal Sets"].map((name, i) => ({ id: `category-${i + 1}`, name, description: `${name} collection`, active: true }));
+  const categories: Category[] = SONASATHI_CATEGORIES.map((name, i) => ({ id: `category-${i + 1}`, name, description: `${name} collection`, active: true }));
   const week = ["Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday", "Sunday"].map((day, i) => ({ day, closed: i === 6, intervals: i === 6 ? [] : [{ open: "10:00", close: "19:00" }] }));
   return {
     version: 1, jewellers, products, visits, categories,
@@ -128,14 +130,19 @@ function loadModuleData(): DemoData | null {
 }
 
 function normalizeDemoData(input: DemoData): DemoData {
+  const existingCategories = input.categories ?? [];
+  const knownCategoryNames = new Set(existingCategories.map((category) => category.name.trim().toLocaleLowerCase()));
+  const categories = [...existingCategories, ...SONASATHI_CATEGORIES.filter((name) => !knownCategoryNames.has(name.toLocaleLowerCase())).map((name) => ({ id: createId("category"), name, description: `${name} collection`, active: true }))];
   const normalized = {
     ...input,
+    categories,
     jewellers: input.jewellers.map((jeweller) => ({
       ...jeweller,
       shop: { ...jeweller.shop, state: jeweller.shop.state ?? "", status: jeweller.shop.status ?? jeweller.status ?? "active", productCategories: jeweller.shop.productCategories ?? [] },
     })),
     products: input.products.map((product) => ({
       ...product,
+      productAttributes: product.productAttributes ?? {},
       netGoldWeight: product.netGoldWeight ?? product.weight,
       fixedDiscount: product.fixedDiscount ?? product.offerAmount ?? 0,
       grossWeight: product.grossWeight ?? undefined,

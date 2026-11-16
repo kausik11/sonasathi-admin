@@ -50,7 +50,7 @@ export default function ImageUploader({ productId, jewellerId, onSaved, replaceI
   return (
     <form onSubmit={submit} className="space-y-3">
       <label className="block text-sm font-medium">
-        Jewellery image
+        {replaceImageId ? "Replacement image" : "Jewellery images (select one or more)"}
         <input
           className="mt-2 block w-full rounded-md border border-gray-300 p-2 text-sm"
           type="file"
@@ -63,7 +63,7 @@ export default function ImageUploader({ productId, jewellerId, onSaved, replaceI
       {getImageStorageMode() === "localstorage" && <p className="text-xs text-amber-700">Demo storage uses browser quota. IndexedDB is the recommended option.</p>}
       {error && <p role="alert" className="text-sm text-red-700">{error}</p>}
       <button disabled={busy || !files.length} className="rounded-md bg-gray-900 px-4 py-2 text-sm text-white disabled:opacity-50">
-        {busy ? "Saving image…" : replaceImageId ? "Replace image" : "Save image"}
+        {busy ? `Saving ${files.length > 1 ? `${files.length} photos` : "photo"}…` : replaceImageId ? "Replace image" : files.length > 1 ? `Save ${files.length} photos` : "Save image"}
       </button>
     </form>
   );

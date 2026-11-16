@@ -7,6 +7,7 @@ import { getGoldRates, recordGoldFetch, saveGoldFetchTimes, saveGoldRateOverride
 import { useDashboardData } from "../../hooks/useDashboardData";
 import { ActionButton, Modal, Panel, Table, type FormField, type FormValues } from "./SharedUI";
 import { SUPPORTED_GOLD_PURITIES } from "../../utils/productPricing";
+import { getAppliedGoldRate } from "../../utils/productPricing";
 
 const rupees = (value: number) => new Intl.NumberFormat("en-IN", { style: "currency", currency: "INR", maximumFractionDigits: 2 }).format(value);
 
@@ -18,10 +19,11 @@ export default function GoldRatesPage({ role }: { role: "admin" | "jeweller" }) 
   const [times, setTimes] = useState<[string, string]>(["10:00", "16:00"]);
   const [addingOverride, setAddingOverride] = useState(false);
   const [nowMs, setNowMs] = useState(0);
+  const [overridePurity, setOverridePurity] = useState<string>("24K");
+  const [overrideRate, setOverrideRate] = useState("");
   const sessionId = role === "jeweller" ? getDemoSession()?.id : null;
   const jewellers = useMemo(() => (data?.jewellers ?? []).filter((item) => !sessionId || item.id === sessionId), [data, sessionId]);
   const gold = data?.gold;
-  const ownOverride = gold?.overrides.find((item) => item.jewellerId === sessionId && (item.purity ?? "24K") === "24K" && new Date(item.expiresAt).getTime() > nowMs);
   const fields: FormField[] = [
     ...(role === "admin" ? [{ key: "jewellerId", label: "Jeweller", type: "select" as const, required: true, options: (data?.jewellers ?? []).map((item) => ({ label: item.shop.shopName, value: item.id })) }] : []),
     { key: "purity", label: "Purity", type: "select", required: true, options: SUPPORTED_GOLD_PURITIES.map((value) => ({ label: value, value })) },
@@ -50,6 +52,13 @@ export default function GoldRatesPage({ role }: { role: "admin" | "jeweller" }) 
     if (!Number.isFinite(rate) || rate <= 0) throw new Error("Enter a gold rate greater than zero.");
     saveGoldRateOverride(owner, purity, rate); setAddingOverride(false); reload(); setMessage(`${purity} jeweller override saved. It expires automatically after 24 hours.`);
   }
+  function saveJewellerOverride() {
+    if (!sessionId) return;
+    const rate = Number(overrideRate);
+    if (!Number.isFinite(rate) || rate <= 0) { setMessage("Enter a price per gram greater than zero."); return; }
+    saveGoldRateOverride(sessionId, overridePurity, rate);
+    setOverrideRate(""); reload(); setMessage(`${overridePurity} rate saved. It will be used for your products for 24 hours.`);
+  }
   function saveManualRate() {
     const value = Number(reference);
     if (!Number.isFinite(value) || value <= 0) { setMessage("Enter a valid reference rate greater than zero."); return; }
@@ -60,6 +69,7 @@ export default function GoldRatesPage({ role }: { role: "admin" | "jeweller" }) 
   if (error) return <p role="alert" className="rounded-lg bg-red-50 p-4 text-sm text-red-800">{error}</p>;
   if (!data || !gold) return <p className="rounded-lg bg-white p-5 text-sm text-slate-500">Loading gold rates…</p>;
   const activeOverrides = gold.overrides.filter((item) => item.status !== "expired" && new Date(item.expiresAt).getTime() > nowMs && (!sessionId || item.jewellerId === sessionId));
+  const effectivePurityRates = sessionId ? SUPPORTED_GOLD_PURITIES.map((purity) => getAppliedGoldRate(gold, gold.overrides, sessionId, purity, nowMs)) : [];
   return <div className="space-y-5">
     <div><p className="text-xs font-semibold uppercase tracking-[0.16em] text-[#9a773e]">Metal pricing</p><h1 className="mt-1 text-2xl font-semibold">Gold Rates</h1><p className="mt-1 text-sm text-slate-500">IBJA reference rate and shop-specific pricing overrides.</p></div>
     <div className="grid gap-4 xl:grid-cols-[0.8fr_1.2fr]">
@@ -67,9 +77,16 @@ export default function GoldRatesPage({ role }: { role: "admin" | "jeweller" }) 
         <div className="flex items-center gap-4"><span className="grid h-12 w-12 place-items-center rounded-xl bg-[#f6eedb] text-[#92723c]"><CircleDollarSign size={25} /></span><div><p className="text-3xl font-semibold text-slate-900">{rupees(gold.referenceRate24k)}</p><p className="text-xs text-slate-500">24K reference · {gold.currency ?? "INR"}/{gold.unit ?? "g"} · {gold.source ?? "Demo sample"}</p><p className="text-xs text-slate-500">Source timestamp: {new Date(gold.sourceTimestamp ?? gold.lastFetchedAt).toLocaleString()}</p></div></div>
         {role === "admin" && <div className="mt-5 flex flex-wrap gap-2"><label className="sr-only" htmlFor="manual-reference-rate">Set manual reference rate</label><input id="manual-reference-rate" type="number" min="1" step="0.01" value={reference} onChange={(event) => setReference(event.target.value)} placeholder="Manual rate per gram" className="min-w-48 flex-1 rounded-lg border border-gray-200 px-3 py-2 text-sm" /><ActionButton variant="secondary" onClick={saveManualRate}><Save size={15} /> Save manual rate</ActionButton></div>}
       </Panel>
-      <Panel title="Jeweller rate overrides" description="Custom rates remain active for 24 hours, then fall back to the reference rate." action={<ActionButton variant="secondary" onClick={() => setAddingOverride(true)}>Add override</ActionButton>}>
-        {activeOverrides.length ? <Table headings={["Shop", "Purity", "Rate", "Updated", "Expires"]}>{activeOverrides.map((item) => <tr key={item.id ?? `${item.jewellerId}-${item.purity}`}><td className="px-3 py-3 font-medium">{data.jewellers.find((j) => j.id === item.jewellerId)?.shop.shopName ?? item.jewellerId}</td><td className="px-3 py-3">{item.purity ?? "24K"}</td><td className="px-3 py-3">{rupees(item.rate24k)} / g</td><td className="px-3 py-3 text-xs text-slate-500">{new Date(item.updatedAt).toLocaleString()}</td><td className="px-3 py-3 text-xs text-slate-500">{new Date(item.expiresAt).toLocaleString()}</td></tr>)}</Table> : <p className="text-sm text-slate-500">{sessionId ? `Your effective 24K reference is ${rupees(ownOverride?.rate24k ?? gold.referenceRate24k)} per gram.` : "No active overrides."}</p>}
-        {sessionId && <p className="mt-3 rounded-lg bg-[#f8f5ed] p-3 text-sm text-slate-700">Your current effective rate: <strong>{rupees(ownOverride?.rate24k ?? gold.referenceRate24k)} / g</strong></p>}
+      <Panel title={sessionId ? "Your purity rates" : "Jeweller rate overrides"} description="Choose a purity and set its price per gram. A custom rate remains active for 24 hours, then the reference estimate is used." action={role === "admin" ? <ActionButton variant="secondary" onClick={() => setAddingOverride(true)}>Add override</ActionButton> : undefined}>
+        {sessionId ? <>
+          <div className="grid gap-3 rounded-lg bg-[#fbfaf7] p-4 sm:grid-cols-[1fr_1fr_auto] sm:items-end">
+            <label className="block text-xs font-semibold text-slate-600">Metal purity<select value={overridePurity} onChange={(event) => { const purity = event.target.value; setOverridePurity(purity); const existing = gold.overrides.find((item) => item.jewellerId === sessionId && (item.purity ?? "24K") === purity && item.status !== "expired" && new Date(item.expiresAt).getTime() > Date.now()); setOverrideRate(existing ? String(existing.rate24k) : ""); setMessage(""); }} className="mt-1.5 block w-full rounded-lg border border-gray-200 bg-white px-3 py-2.5 text-sm">{SUPPORTED_GOLD_PURITIES.map((purity) => <option key={purity} value={purity}>{purity}</option>)}</select></label>
+            <label className="block text-xs font-semibold text-slate-600">Your price per gram (₹)<input type="number" min="0.01" step="0.01" value={overrideRate} onChange={(event) => setOverrideRate(event.target.value)} placeholder="Enter rate" className="mt-1.5 block w-full rounded-lg border border-gray-200 bg-white px-3 py-2.5 text-sm" /></label>
+            <ActionButton onClick={saveJewellerOverride}><Save size={15} /> Save rate</ActionButton>
+          </div>
+          <p className="mt-3 text-xs text-slate-500">Saving a rate replaces that purity’s previous active override. The previous value remains in the audit history.</p>
+          <div className="mt-5"><p className="mb-3 text-xs font-semibold uppercase tracking-wide text-slate-500">Effective price by purity</p><Table headings={["Purity", "Effective rate / g", "Rate source", "Override expires"]}>{effectivePurityRates.map((item) => { const active = gold.overrides.find((override) => override.jewellerId === sessionId && (override.purity ?? "24K") === item.purity && override.status !== "expired" && new Date(override.expiresAt).getTime() > nowMs); return <tr key={item.purity}><td className="px-3 py-3 font-medium">{item.purity}</td><td className="px-3 py-3">{rupees(item.ratePerGram)} / g</td><td className="px-3 py-3"><span className={`rounded-full px-2 py-1 text-xs ${item.overridden ? "bg-violet-50 text-violet-700" : "bg-amber-50 text-amber-800"}`}>{item.overridden ? "Your custom rate" : "24K reference estimate"}</span></td><td className="px-3 py-3 text-xs text-slate-500">{active ? new Date(active.expiresAt).toLocaleString() : "—"}</td></tr>; })}</Table></div>
+        </> : activeOverrides.length ? <Table headings={["Shop", "Purity", "Rate", "Updated", "Expires"]}>{activeOverrides.map((item) => <tr key={item.id ?? `${item.jewellerId}-${item.purity}`}><td className="px-3 py-3 font-medium">{data.jewellers.find((j) => j.id === item.jewellerId)?.shop.shopName ?? item.jewellerId}</td><td className="px-3 py-3">{item.purity ?? "24K"}</td><td className="px-3 py-3">{rupees(item.rate24k)} / g</td><td className="px-3 py-3 text-xs text-slate-500">{new Date(item.updatedAt).toLocaleString()}</td><td className="px-3 py-3 text-xs text-slate-500">{new Date(item.expiresAt).toLocaleString()}</td></tr>)}</Table> : <p className="text-sm text-slate-500">No active overrides.</p>}
         <div className="mt-5 border-t border-gray-100 pt-4"><p className="mb-3 text-xs font-semibold uppercase tracking-wide text-slate-500">Override audit history</p>{gold.overrides.filter((item) => !sessionId || item.jewellerId === sessionId).length ? <Table headings={["Shop", "Purity", "Rate", "Started", "Ended", "Status"]}>{gold.overrides.filter((item) => !sessionId || item.jewellerId === sessionId).slice().sort((a, b) => new Date(b.updatedAt).getTime() - new Date(a.updatedAt).getTime()).map((item) => { const expired = item.status === "expired" || new Date(item.expiresAt).getTime() <= nowMs; return <tr key={item.id ?? `${item.jewellerId}-${item.purity}-${item.updatedAt}`}><td className="px-3 py-3">{data.jewellers.find((j) => j.id === item.jewellerId)?.shop.shopName ?? item.jewellerId}</td><td className="px-3 py-3">{item.purity ?? "24K"}</td><td className="px-3 py-3">{rupees(item.rate24k)} / g</td><td className="px-3 py-3 text-xs">{new Date(item.updatedAt).toLocaleString()}</td><td className="px-3 py-3 text-xs">{new Date(item.expiresAt).toLocaleString()}{item.endReason ? ` · ${item.endReason}` : ""}</td><td className="px-3 py-3">{expired ? "Expired" : "Active"}</td></tr>; })}</Table> : <p className="text-sm text-slate-500">No override history.</p>}</div>
       </Panel>
     </div>

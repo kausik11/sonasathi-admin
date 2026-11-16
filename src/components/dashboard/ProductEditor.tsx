@@ -7,11 +7,12 @@ import { calculatePriceBreakdown, formatInr, getAppliedGoldRate, SUPPORTED_GOLD_
 import ImageUploader from "../jewellery/ImageUploader";
 import ImageGallery from "../jewellery/ImageGallery";
 import PriceBreakdownTable from "../jewellery/PriceBreakdownTable";
+import { getProductCategoryFields, type CategoryField } from "../../utils/productCategoryFields";
 
 const newProductId = () => `product-${crypto.randomUUID()}`;
 const blankProduct = (jewellerId: string): Product => ({
   id: newProductId(), jewellerId, name: "", category: "", purity: "22K", weight: 0, netGoldWeight: 0, actualPrice: 0,
-  offerAmount: 0, fixedDiscount: 0, grossWeight: undefined, huid: "", huid2: "", stoneName: "", stoneDetails: "", stoneCharges: 0,
+  offerAmount: 0, fixedDiscount: 0, grossWeight: undefined, huid: "", huid2: "", stoneName: "", stoneDetails: "", stoneCharges: 0, productAttributes: {},
   makingChargePercentage: 15, makingChargeDiscountPercentage: 0, breakdownDiscount: 0, gstPercentage: 3, pricingMode: "manual",
   status: "draft", description: "", createdAt: new Date().toISOString(),
 });
@@ -27,6 +28,7 @@ export default function ProductEditor({ product, jewellers, categories, gold, ov
   const [galleryVersion, setGalleryVersion] = useState(0);
   const [replaceImageId, setReplaceImageId] = useState<string | undefined>();
   const selectedCategories = useMemo(() => categories.filter((item) => item.active || item.name === draft.category), [categories, draft.category]);
+  const categoryFields = getProductCategoryFields(draft.category);
   const appliedRate = getAppliedGoldRate(gold, overrides, draft.jewellerId, draft.purity);
   const price = calculatePriceBreakdown(draft, appliedRate);
   const inputClass = "mt-1.5 block w-full rounded-lg border border-gray-300 bg-white px-3 py-2.5 text-sm outline-none focus:border-[#a98b52] focus:ring-2 focus:ring-[#d6b46b]/20";
@@ -39,6 +41,16 @@ export default function ProductEditor({ product, jewellers, categories, gold, ov
     if (key === "weight") setDraft((current) => ({ ...current, weight: value, netGoldWeight: value }));
     else if (key === "netGoldWeight") setDraft((current) => ({ ...current, netGoldWeight: value, weight: value }));
     else setDraft((current) => ({ ...current, [key]: value }));
+  }
+  function updateCategoryAttribute(key: string, raw: string, type: CategoryField["type"]) {
+    const value = type === "number" && raw !== "" ? Number(raw) : raw;
+    setDraft((current) => ({ ...current, productAttributes: { ...current.productAttributes, [key]: value } }));
+  }
+
+  function categoryFieldControl(field: CategoryField) {
+    const value = draft.productAttributes?.[field.key];
+    if (field.type === "select") return <label key={field.key} className="block text-xs font-semibold text-slate-600">{field.label}<select value={String(value ?? "")} onChange={(event) => updateCategoryAttribute(field.key, event.target.value, field.type)} className={inputClass}><option value="">Choose {field.label.toLocaleLowerCase()}</option>{field.options?.map((option) => <option key={option} value={option}>{option}</option>)}</select></label>;
+    return <label key={field.key} className="block text-xs font-semibold text-slate-600">{field.label}{field.unit ? ` (${field.unit})` : ""}<input type={field.type} step={field.step} value={String(value ?? "")} onChange={(event) => updateCategoryAttribute(field.key, event.target.value, field.type)} className={inputClass} /></label>;
   }
 
   async function submit() {
@@ -84,6 +96,7 @@ export default function ProductEditor({ product, jewellers, categories, gold, ov
             <label className="block text-xs font-semibold text-slate-600">Status<select value={draft.status} onChange={(event) => update("status", event.target.value as Product["status"])} className={inputClass}><option value="draft">Draft</option><option value="published">Published</option><option value="unpublished">Unpublished</option></select></label>
             <label className="block text-xs font-semibold text-slate-600 sm:col-span-2">Description<textarea rows={3} value={draft.description} onChange={(event) => update("description", event.target.value)} className={inputClass} /></label>
           </div></section>
+          {categoryFields.length > 0 && <section className="rounded-xl border border-[#e8e4da] bg-white p-4"><h3 className="font-semibold">{draft.category} details</h3><p className="mt-1 text-xs text-slate-500">These fields are shown for this jewellery category.</p><div className="mt-4 grid gap-4 sm:grid-cols-2">{categoryFields.map(categoryFieldControl)}</div></section>}
           <section className="rounded-xl border border-[#e8e4da] bg-white p-4"><h3 className="font-semibold">Jewellery specifications</h3><div className="mt-4 grid gap-4 sm:grid-cols-2">
             {fieldControl({ label: "HUID", field: "huid" })}{fieldControl({ label: "HUID 2 (optional)", field: "huid2" })}
             <label className="block text-xs font-semibold text-slate-600">Gold purity<select value={draft.purity} onChange={(event) => update("purity", event.target.value)} className={inputClass}>{SUPPORTED_GOLD_PURITIES.map((purity) => <option key={purity}>{purity}</option>)}</select></label>
