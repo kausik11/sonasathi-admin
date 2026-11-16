@@ -129,5 +129,5 @@ test("opening admin gold rates replaces the demo value with the IBJA response", 
   await page.goto("/admin/dashboard/gold-rates");
   await expect(page.getByRole("status").filter({ hasText: "Updated IBJA reference rate" })).toBeVisible();
   await expect(page.getByText("₹13,497.02", { exact: true })).toBeVisible();
-  await expect(page.getByText("Demo reference (24K sample, not live)")).toHaveCount(0);
+  await expect(page.getByText(/24K reference.*Metals.Dev \/ IBJA/)).toBeVisible();
 });
