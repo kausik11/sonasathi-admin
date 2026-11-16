@@ -1,36 +1,56 @@
-This is a [Next.js](https://nextjs.org) project bootstrapped with [`create-next-app`](https://nextjs.org/docs/app/api-reference/cli/create-next-app).
+# Sonasathi Dashboard Demo
 
-## Getting Started
+Responsive Next.js dashboard for the Sonasathi admin and jeweller demo. Business records and compressed product images are stored in this browser profile; no application database is required.
 
-First, run the development server:
+## Run locally
 
 ```bash
+npm install
 npm run dev
-# or
-yarn dev
-# or
-pnpm dev
-# or
-bun dev
 ```
 
-Open [http://localhost:3000](http://localhost:3000) with your browser to see the result.
+Open [http://localhost:3000](http://localhost:3000). The first route is the demo sign-in page.
 
-You can start editing the page by modifying `app/page.tsx`. The page auto-updates as you edit the file.
+## Demo accounts
 
-This project uses [`next/font`](https://nextjs.org/docs/app/building-your-application/optimizing/fonts) to automatically optimize and load [Geist](https://vercel.com/font), a new font family for Vercel.
+| Role | Email | Password |
+| --- | --- | --- |
+| Super Admin | `admin@sonasathi.demo` | `Admin@12345` |
+| Jeweller 1 | `jeweller1@sonasathi.demo` | `Jeweller@12345` |
+| Jeweller 2 | `jeweller2@sonasathi.demo` | `Jeweller@12345` |
 
-## Learn More
+Demo sign-in is client-side UI separation only. It is not production authentication or server-enforced authorization.
 
-To learn more about Next.js, take a look at the following resources:
+## Routes
 
-- [Next.js Documentation](https://nextjs.org/docs) - learn about Next.js features and API.
-- [Learn Next.js](https://nextjs.org/learn) - an interactive Next.js tutorial.
+- `/admin/dashboard` — overview
+- `/admin/dashboard/accounts`
+- `/admin/dashboard/shop-profiles`
+- `/admin/dashboard/products`
+- `/admin/dashboard/images`
+- `/admin/dashboard/store-visits`
+- `/admin/dashboard/categories`
+- `/admin/dashboard/gold-rates`
+- `/admin/dashboard/visiting-hours`
+- `/admin/dashboard/settings`
+- `/jeweller/dashboard` — jeweller-scoped overview
+- `/jeweller/dashboard/profile`
+- `/jeweller/dashboard/products`
+- `/jeweller/dashboard/images`
+- `/jeweller/dashboard/store-visits`
+- `/jeweller/dashboard/gold-rates`
+- `/jeweller/dashboard/visiting-hours`
+- `/jeweller/dashboard/settings`
+- `/visit-request` — same-origin public visit-request demo form
 
-You can check out [the Next.js GitHub repository](https://github.com/vercel/next.js) - your feedback and contributions are welcome!
+Seed records are created only when the versioned Sonasathi data key is absent. Existing browser data is not replaced during normal startup. Use Settings to export/import a JSON backup or explicitly restore the sample data.
 
-## Deploy on Vercel
+Jewellery images are resized and converted to WebP in the browser, then stored as Base64 Data URLs in localStorage by default. Storage quota errors are shown without automatically deleting existing images. Existing IndexedDB demo images are migrated to localStorage as they are viewed when possible.
 
-The easiest way to deploy your Next.js app is to use the [Vercel Platform](https://vercel.com/new?utm_medium=default-template&filter=next.js&utm_source=create-next-app&utm_campaign=create-next-app-readme) from the creators of Next.js.
+The public visit form writes to localStorage on the Next.js app origin. A separate storefront origin cannot read or share those records without a backend or a same-origin proxy.
 
-Check out our [Next.js deployment documentation](https://nextjs.org/docs/app/building-your-application/deploying) for more details.
+## IBJA reference fetch
+
+Manual and scheduled fetches use the server route `/api/gold-rate`. To enable live Metals.Dev rates, place `METALSDEV_API_KEY` in the local server environment (for example, in `.env.local`) and restart Next.js. The key is not exposed to the browser. Without it, fetch attempts are recorded as failed API log entries; manual reference rates and jeweller overrides remain available. The scheduler checks the configured two times while the admin dashboard is open in the browser.
+
+Gold-rate requests use the Metals.Dev authority endpoint for IBJA, returning INR per gram when supported by the configured account.
