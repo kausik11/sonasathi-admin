@@ -20,7 +20,7 @@ export default function JewelleryImageManager({ initialJewellerId = demoJeweller
   const availableProducts = productOptions?.filter((product) => product.jewellerId === jewellerId) ?? [];
 
   return (
-    <main className="mx-auto w-full max-w-5xl space-y-8 p-6 sm:p-10">
+    <main className="mx-auto w-full max-w-5xl space-y-5 p-0 sm:space-y-6 sm:p-2">
       <header className="space-y-2">
         <p className="text-sm font-medium uppercase tracking-[0.18em] text-amber-700">Sonasathi · Local demo</p>
         <h1 className="text-3xl font-semibold tracking-tight text-gray-950">Jewellery images</h1>
@@ -61,7 +61,7 @@ export default function JewelleryImageManager({ initialJewellerId = demoJeweller
       {!productId.trim() ? (
         <p role="status" className="text-sm text-amber-800">Enter a product ID to manage its images.</p>
       ) : (
-        <div className="grid gap-8 lg:grid-cols-[minmax(0,0.8fr)_minmax(0,1.2fr)]">
+        <div className="grid gap-8 xl:grid-cols-[minmax(0,0.8fr)_minmax(0,1.2fr)]">
           <section className="space-y-4 rounded-xl border border-gray-200 bg-white p-5">
             <div>
               <h2 className="font-semibold text-gray-950">{replaceImageId ? "Replace photo" : "Upload photos"}</h2>

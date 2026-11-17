@@ -2,6 +2,7 @@
 
 import { useState, type FormEvent } from "react";
 import { useRouter } from "next/navigation";
+import Image from "next/image";
 import { DEMO_ACCOUNTS, signInDemoAccount, signInToDemo } from "../src/services/demoSession";
 
 export default function Home() {
@@ -31,12 +32,9 @@ export default function Home() {
         <section className="relative hidden overflow-hidden bg-[#201b16] px-12 py-10 text-white lg:flex lg:flex-col lg:justify-between xl:px-20">
           <div className="absolute -right-24 top-1/4 h-96 w-96 rounded-full border border-[#d8b675]/20" />
           <div className="absolute -right-8 top-[30%] h-64 w-64 rounded-full border border-[#d8b675]/25" />
-          <div className="relative flex items-center gap-3">
-            <div className="grid h-11 w-11 place-items-center rounded-xl bg-[#d8b675] text-lg font-semibold text-[#201b16]">S</div>
-            <div>
-              <p className="text-lg font-semibold tracking-wide">SONASATHI</p>
-              <p className="text-xs text-white/60">Jewellery business hub</p>
-            </div>
+          <div className="relative">
+            <Image src="/brand/sonasathi-logo.png" alt="Sonasathi" width={183} height={74} priority className="h-auto w-[183px] max-w-full rounded-md" />
+            <p className="mt-2 text-xs text-white/60">Jewellery business hub</p>
           </div>
           <div className="relative max-w-xl py-16">
             <p className="mb-4 text-xs font-semibold uppercase tracking-[0.28em] text-[#d8b675]">Welcome back</p>
@@ -49,8 +47,7 @@ export default function Home() {
         <section className="flex items-center justify-center px-5 py-12 sm:px-10">
           <div className="w-full max-w-md">
             <div className="mb-9 lg:hidden">
-              <div className="mb-4 grid h-11 w-11 place-items-center rounded-xl bg-[#d8b675] font-semibold">S</div>
-              <p className="text-sm font-semibold tracking-[0.16em]">SONASATHI</p>
+              <Image src="/brand/sonasathi-logo.png" alt="Sonasathi" width={183} height={74} priority className="mb-3 h-auto w-[183px] max-w-full rounded-md" />
               <p className="mt-1 text-xs text-gray-500">Jewellery business hub</p>
             </div>
             <div className="mb-8">

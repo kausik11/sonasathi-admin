@@ -1,6 +1,7 @@
 "use client";
 
 import Link from "next/link";
+import Image from "next/image";
 import { usePathname, useRouter } from "next/navigation";
 import { useEffect, useMemo, useState } from "react";
 import {
@@ -66,8 +67,25 @@ export default function DashboardShell({ role, children }: { role: DemoRole; chi
     return () => window.clearTimeout(timer);
   }, [role, router]);
 
+  useEffect(() => {
+    if (!mobileOpen) return;
+    const previous = document.body.style.overflow;
+    const close = (event: KeyboardEvent) => { if (event.key === "Escape") setMobileOpen(false); };
+    const desktop = window.matchMedia("(min-width: 1024px)");
+    const onResize = () => { if (desktop.matches) setMobileOpen(false); };
+    document.body.style.overflow = "hidden";
+    window.addEventListener("keydown", close);
+    desktop.addEventListener("change", onResize);
+    return () => {
+      document.body.style.overflow = previous;
+      window.removeEventListener("keydown", close);
+      desktop.removeEventListener("change", onResize);
+    };
+  }, [mobileOpen]);
+
   const title = useMemo(() => pageTitle, [pageTitle]);
   const logout = () => { signOutOfDemo(); router.replace("/"); };
+  const compactSidebar = collapsed && !mobileOpen;
   const sidebarWidth = collapsed ? "lg:w-[84px]" : "lg:w-[264px]";
 
   if (!session) return <div className="grid min-h-screen place-items-center bg-[#f6f4ee] text-sm text-slate-500">Opening Sonasathi dashboard…</div>;
@@ -76,10 +94,12 @@ export default function DashboardShell({ role, children }: { role: DemoRole; chi
     <div className="min-h-screen bg-[#f6f4ee] text-[#26312b]">
       <GoldRateScheduler role={role} />
       {mobileOpen && <button aria-label="Close navigation" onClick={() => setMobileOpen(false)} className="fixed inset-0 z-40 bg-black/40 lg:hidden" />}
-      <aside className={`fixed inset-y-0 left-0 z-50 flex flex-col border-r border-[#294239] bg-[#142a22] text-white transition-all duration-200 ${sidebarWidth} ${mobileOpen ? "translate-x-0" : "-translate-x-full lg:translate-x-0"} ${collapsed ? "w-[264px] lg:w-[84px]" : "w-[264px]"}`}>
-        <div className={`flex h-[76px] items-center border-b border-white/10 ${collapsed ? "justify-center px-3" : "justify-between px-5"}`}>
-          <Link href={prefix} onClick={() => setMobileOpen(false)} className="min-w-0">
-            {collapsed ? <span className="grid h-10 w-10 place-items-center rounded-xl bg-[#d6b46b] font-bold text-[#17271f]">S</span> : <><span className="block text-sm font-bold tracking-[0.14em] text-[#e1c477]">SONASATHI</span><span className="mt-1 block text-[10px] uppercase tracking-[0.18em] text-white/55">{role === "admin" ? "Admin panel" : "Jeweller panel"}</span></>}
+      <aside id="dashboard-navigation" className={`fixed inset-y-0 left-0 z-50 flex max-w-[calc(100vw-2rem)] flex-col border-r border-[#294239] bg-[#142a22] text-white transition-all duration-200 ${sidebarWidth} ${mobileOpen ? "translate-x-0" : "-translate-x-full lg:translate-x-0"} ${collapsed ? "w-[264px] lg:w-[84px]" : "w-[264px]"}`}>
+        <div className={`flex h-[76px] shrink-0 items-center border-b border-white/10 ${role === "admin" ? "bg-[#174c43]" : ""} ${compactSidebar ? "flex-col justify-center gap-1 px-2" : "justify-between gap-2 px-5"}`}>
+          <Link href={prefix} aria-label={role === "admin" ? "Sonasathi admin dashboard" : "Sonasathi jeweller dashboard"} onClick={() => setMobileOpen(false)} className="min-w-0">
+            {role === "admin" ? (
+              <Image src="/brand/sonasathi-logo.png" alt="Sonasathi" width={183} height={74} priority className={compactSidebar ? "h-auto w-11 rounded-sm" : "h-auto w-[164px] max-w-full rounded-sm"} />
+            ) : compactSidebar ? <span className="grid h-10 w-10 place-items-center rounded-xl bg-[#d6b46b] font-bold text-[#17271f]">S</span> : <><span className="block text-sm font-bold tracking-[0.14em] text-[#e1c477]">SONASATHI</span><span className="mt-1 block text-[10px] uppercase tracking-[0.18em] text-white/55">Jeweller panel</span></>}
           </Link>
           <button onClick={() => setMobileOpen(false)} aria-label="Close menu" className="rounded p-2 text-white/70 hover:bg-white/10 lg:hidden"><X size={18} /></button>
           <button onClick={() => setCollapsed((value) => !value)} aria-label={collapsed ? "Expand sidebar" : "Collapse sidebar"} className="hidden rounded p-1.5 text-white/60 hover:bg-white/10 lg:block">{collapsed ? <ChevronRight size={16} /> : <ChevronLeft size={16} />}</button>
@@ -89,29 +109,29 @@ export default function DashboardShell({ role, children }: { role: DemoRole; chi
             const href = slug ? `${prefix}/${slug}` : prefix;
             const active = slug ? currentSlug === slug : !currentSlug;
             return <Link key={slug} href={href} title={collapsed ? label : undefined} onClick={() => setMobileOpen(false)} className={`flex items-center gap-3 rounded-lg px-3 py-2.5 text-[13px] transition ${active ? "bg-[#34473d] font-semibold text-white shadow-inner" : "text-white/72 hover:bg-white/8 hover:text-white"}`}>
-              <Icon size={17} strokeWidth={1.8} className="shrink-0" />{!collapsed && <span>{label}</span>}
+              <Icon size={17} strokeWidth={1.8} className="shrink-0" />{!compactSidebar && <span>{label}</span>}
             </Link>;
           })}
         </nav>
         <div className="border-t border-white/10 p-3">
-          <button onClick={logout} title={collapsed ? "Log out" : undefined} className="flex w-full items-center gap-3 rounded-lg px-3 py-2.5 text-left text-[13px] text-white/75 hover:bg-white/10 hover:text-white"><LogOut size={17} />{!collapsed && "Log out"}</button>
+          <button onClick={logout} title={collapsed ? "Log out" : undefined} className="flex w-full items-center gap-3 rounded-lg px-3 py-2.5 text-left text-[13px] text-white/75 hover:bg-white/10 hover:text-white"><LogOut size={17} />{!compactSidebar && "Log out"}</button>
         </div>
       </aside>
 
       <div className={`min-h-screen transition-[padding] duration-200 ${collapsed ? "lg:pl-[84px]" : "lg:pl-[264px]"}`}>
-        <header className="sticky top-0 z-30 flex h-[76px] items-center justify-between border-b border-[#e8e4da] bg-white/95 px-4 backdrop-blur sm:px-7">
-          <div className="flex items-center gap-3">
-            <button aria-label="Open navigation" onClick={() => setMobileOpen(true)} className="rounded-lg border border-gray-200 p-2 lg:hidden"><Menu size={18} /></button>
-            <div><p className="text-sm font-semibold text-[#26312b]">{title}</p><p className="mt-0.5 text-xs text-slate-500">{role === "admin" ? "Welcome, Super Admin" : `Welcome, ${session.name}`}</p></div>
+        <header className="sticky top-0 z-30 flex min-h-[76px] items-center justify-between gap-2 border-b border-[#e8e4da] bg-white/95 px-4 backdrop-blur sm:px-7">
+          <div className="flex min-w-0 items-center gap-2 sm:gap-3">
+            <button aria-label="Open navigation" aria-expanded={mobileOpen} aria-controls="dashboard-navigation" onClick={() => setMobileOpen(true)} className="shrink-0 rounded-lg border border-gray-200 p-2 lg:hidden"><Menu size={18} /></button>
+            <div className="min-w-0"><p className="truncate text-sm font-semibold text-[#26312b]">{title}</p><p className="mt-0.5 truncate text-xs text-slate-500">{role === "admin" ? "Welcome, Super Admin" : `Welcome, ${session.name}`}</p></div>
           </div>
-          <div className="flex items-center gap-3 sm:gap-5">
+          <div className="flex shrink-0 items-center gap-1 sm:gap-5">
             <button aria-label={`${noticeCount} notifications`} className="relative rounded-full p-2 text-slate-500 hover:bg-gray-100"><Bell size={18} /><span className="absolute right-1.5 top-1.5 h-1.5 w-1.5 rounded-full bg-[#c49d4b]" /></button>
             <div className="hidden h-8 w-px bg-gray-200 sm:block" />
             <div className="flex items-center gap-2.5"><span className="grid h-9 w-9 place-items-center rounded-full bg-[#e9dfc9] text-sm font-semibold text-[#66512e]">{(session.name[0] ?? "S").toUpperCase()}</span><span className="hidden text-xs sm:block"><span className="block font-semibold text-slate-800">{session.name}</span><span className="text-slate-500">{role === "admin" ? "Administrator" : "Jeweller"}</span></span></div>
             <button onClick={logout} className="hidden items-center gap-1.5 text-xs text-slate-500 hover:text-slate-900 md:flex"><LogOut size={15} />Logout</button>
           </div>
         </header>
-        <div className="px-4 py-5 sm:px-7"><div className="mb-5 flex items-center gap-2 text-xs text-slate-500"><span>Sonasathi</span><span>/</span><span className="text-slate-800">{title}</span></div>{children}</div>
+        <div className="dashboard-content min-w-0 px-3 py-5 sm:px-6 xl:px-7"><div className="mb-5 flex items-center gap-2 text-xs text-slate-500"><span>Sonasathi</span><span>/</span><span className="text-slate-800">{title}</span></div>{children}</div>
       </div>
     </div>
   );
